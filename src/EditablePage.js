@@ -21,8 +21,6 @@ const EditPage = ({ passedBlocks, getBlocksHandler }) => {
   const [currentBlockIndex, setCurrentBlockIndex] = useState(null);
   const [commandAction, setCommandAction] = useState(null);
 
-  console.log("commandAction");
-
   console.log("blocks", blocks);
   // function scrollToBottom(index) {
   //   const element = scrollRef.current.children[0].children[index - 1];
