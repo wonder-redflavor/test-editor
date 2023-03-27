@@ -6,6 +6,12 @@ import getCaretCoordinates from "./utils/getCaretCoordinates";
 import COLORS from "./constants/colors";
 import styled from "styled-components";
 import FloatingButton from "./FloatingButton";
+import setCaretToEnd from "./utils/setCaretToEnd";
+
+import "./styles.css";
+import SelectMenu from "./SelectMenu";
+
+const CMD_KEY = "/";
 
 class EditableBlock extends React.Component {
   constructor(props) {
@@ -21,6 +27,11 @@ class EditableBlock extends React.Component {
       actionMenuPosition: { x: null, y: null },
       selectionStart: 0,
       selectionEnd: 0,
+      selectMenuIsOpen: false,
+      selectMenuPosition: {
+        x: null,
+        y: null,
+      },
     };
     this.onChangeHandler = this.onChangeHandler.bind(this);
     this.onKeyDownHandler = this.onKeyDownHandler.bind(this);
@@ -29,6 +40,11 @@ class EditableBlock extends React.Component {
       this.calculateActionMenuPosition.bind(this);
     this.openActionMenu = this.openActionMenu.bind(this);
     this.closeActionMenu = this.closeActionMenu.bind(this);
+
+    this.onKeyUpHandler = this.onKeyUpHandler.bind(this);
+    this.openSelectMenuHandler = this.openSelectMenuHandler.bind(this);
+    this.closeSelectMenuHandler = this.closeSelectMenuHandler.bind(this);
+    this.tagSelectionHandler = this.tagSelectionHandler.bind(this);
   }
 
   componentDidMount() {
@@ -58,7 +74,8 @@ class EditableBlock extends React.Component {
     if (
       this.state.html !== nextState.html ||
       this.state.flag !== nextState.flag ||
-      this.state.actionMenuOpen !== nextState.actionMenuOpen
+      this.state.actionMenuOpen !== nextState.actionMenuOpen ||
+      this.state.selectMenuIsOpen !== nextState.selectMenuIsOpen
     ) {
       return true;
     }
@@ -88,10 +105,18 @@ class EditableBlock extends React.Component {
   }
 
   onKeyDownHandler(e) {
+    if (e.key === CMD_KEY) {
+      // If the user starts to enter a command, we store a backup copy of
+      // the html. We need this to restore a clean version of the content
+      // after the content type selection was finished.
+      this.setState({ htmlBackup: this.state.html });
+      console.log("onKeyDownHandler", "실행됌");
+    }
     if (e.key === "Enter") {
       if (
         e.nativeEvent.isComposing === false &&
-        this.state.previousKey !== "Shift"
+        this.state.previousKey !== "Shift" &&
+        !this.state.selectMenuIsOpen
       ) {
         e.preventDefault();
         const { selectionStart } = getSelection(this.contentEditable.current);
@@ -178,6 +203,43 @@ class EditableBlock extends React.Component {
     }
   }
 
+  onKeyUpHandler(e) {
+    if (e.key === CMD_KEY) {
+      this.openSelectMenuHandler();
+      console.log("onKeyUpHandler", "실행됌");
+    }
+  }
+
+  // After openening the select menu, we attach a click listener to the dom that
+  // closes the menu after the next click - regardless of outside or inside menu.
+  openSelectMenuHandler() {
+    const { x, y } = getCaretCoordinates();
+    this.setState({
+      selectMenuIsOpen: true,
+      selectMenuPosition: { x, y },
+    });
+    document.addEventListener("click", this.closeSelectMenuHandler);
+  }
+
+  closeSelectMenuHandler() {
+    this.setState({
+      htmlBackup: null,
+      selectMenuIsOpen: false,
+      selectMenuPosition: { x: null, y: null },
+    });
+    document.removeEventListener("click", this.closeSelectMenuHandler);
+  }
+
+  // Restore the clean html (without the command), focus the editable
+  // with the caret being set to the end, close the select menu
+  tagSelectionHandler(tag) {
+    this.setState({ tag: tag, html: this.state.htmlBackup }, () => {
+      setCaretToEnd(this.contentEditable.current);
+      this.closeSelectMenuHandler();
+    });
+    console.log("tagSelectionHandler", "실행됌");
+  }
+
   render() {
     return (
       <>
@@ -197,12 +259,21 @@ class EditableBlock extends React.Component {
             }}
           />
         )}
+
+        {this.state.selectMenuIsOpen && (
+          <SelectMenu
+            position={this.state.selectMenuPosition}
+            onSelect={this.tagSelectionHandler}
+            close={this.closeSelectMenuHandler}
+          />
+        )}
         <Block
           innerRef={this.contentEditable}
           html={this.state.html}
           flag={this.props.flag}
           tagName={this.state.tag}
           onChange={this.onChangeHandler}
+          onKeyUp={this.onKeyUpHandler}
           onKeyDown={this.onKeyDownHandler}
           onMouseUp={this.handleMouseUp}
           className={this.props.id}
@@ -214,17 +285,18 @@ class EditableBlock extends React.Component {
 
 const Block = styled(ContentEditable)`
   width: 96%;
+
   padding: 4px 9px;
-  margin-top: 10px;
+  margin-top: 5px;
 
   background: ${({ flag }) => (flag ? COLORS.blockBackground : "none")};
   border: ${({ flag }) => (flag ? "1px solid #5274EF" : "none")};
   border-radius: 2px;
   border: 1px solid #e0e0e0;
-
+  /* 
   font-weight: 400;
-  font-size: 12px;
-  line-height: 18px;
+  font-size: 12px; */
+  /* line-height: 18px; */
 
   letter-spacing: -0.005em;
 
