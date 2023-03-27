@@ -285,7 +285,8 @@ class EditableBlock extends React.Component {
 
 const Block = styled(ContentEditable)`
   width: 96%;
-  /* padding: 4px 9px; */
+
+  padding: 4px 9px;
   margin-top: 5px;
 
   background: ${({ flag }) => (flag ? COLORS.blockBackground : "none")};

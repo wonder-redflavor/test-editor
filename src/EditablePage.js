@@ -286,7 +286,7 @@ const EditPage = ({ passedBlocks, getBlocksHandler }) => {
 };
 
 const Container = styled.div`
-  padding-top: 2px;
+  padding: 20px 50px;
   height: 573px;
 
   display: flex;
